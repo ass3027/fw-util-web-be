@@ -1,6 +1,6 @@
 import unittest
-from main.ssh_connector import SshConnector
-from main.region import REGION_DICT
+from main.connector import SshConnector
+from main import REGION_DICT
 
 
 class MyTestCase(unittest.TestCase):
