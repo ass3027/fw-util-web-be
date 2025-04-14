@@ -65,11 +65,11 @@ class SshConnector:
         result = self.run(docker_exec_cmd + mongo_cmd)
         db_info = json.loads(result)
 
-        result = {}
-        for info in db_info:
+        result = []
+        for info in sorted(db_info, key=lambda o: int(o['cctv_ID']['$numberInt'])):
             cctv_id = int(info['cctv_ID']['$numberInt'])
             info['cctv_ID'] = cctv_id
-            result[cctv_id] = info
+            result.append(info)
         return result
 
 
