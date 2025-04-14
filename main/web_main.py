@@ -7,7 +7,7 @@ from main.connector import SshConnector
 from region import Region, REGION_DICT
 app = FastAPI()
 origins = [ "http://localhost","http://localhost:5173" ]
-origin_regex = "http://192.168.10.*"
+origin_regex = "http://192.168.*"
 
 # noinspection PyTypeChecker
 app.add_middleware(
