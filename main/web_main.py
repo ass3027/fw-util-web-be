@@ -2,8 +2,8 @@ import uvicorn
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from log_analyzer_factory import LogAnalyzerFactory
-from ssh_connector import SshConnector
+from main.log_analyzer import LogAnalyzerFactory
+from main.connector import SshConnector
 from region import Region, REGION_DICT
 app = FastAPI()
 origins = [ "http://localhost","http://localhost:5173" ]

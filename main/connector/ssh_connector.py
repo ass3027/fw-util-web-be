@@ -1,6 +1,6 @@
 import json
 import pexpect
-from main.region import Region, REGION_DICT
+from main import Region, REGION_DICT
 
 
 class SshConnector:
@@ -49,7 +49,8 @@ class SshConnector:
         return self.remove_escape_char(output)
 
 
-    def remove_escape_char(self, output):
+    @staticmethod
+    def remove_escape_char(output):
         if output[-14:] == "\r\n\x1b[?2004h\x1b]0;":
             output = output[:-14]
         elif output[-10:] == '\r\n\x1b[?2004h':
@@ -81,6 +82,7 @@ class SshConnector:
     def get_milestone(self):
         docker_exec_cmd = "sudo -S docker logs $(sudo -S docker ps -q --filter ancestor=monowine_mipsdk_v1)"
         return self.run(docker_exec_cmd)
+
 
 if __name__ == "__main__":
     _region = REGION_DICT["경남"]

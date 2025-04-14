@@ -98,8 +98,8 @@ class LogAnalyzer:
 
 
 if __name__ == "__main__":
-    from ssh_connector import SshConnector
-    from region import REGION_DICT
+    from main.connector.ssh_connector import SshConnector
+    from main.region import REGION_DICT
 
     _region_name = "gangwon"
     # _region_name = "gyeongnam"

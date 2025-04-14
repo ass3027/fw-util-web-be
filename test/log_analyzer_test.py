@@ -1,9 +1,8 @@
 import json
 import os.path
 import unittest
-
 from main.log_analyzer import LogAnalyzer
-from main.region import REGION_DICT
+from main import REGION_DICT
 
 
 class MyTestCase(unittest.TestCase):

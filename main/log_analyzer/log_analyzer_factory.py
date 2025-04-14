@@ -1,6 +1,5 @@
-from log_file_importer import LogFileImporter
-from log_analyzer import LogAnalyzer
-from ssh_connector import SshConnector
+from main.log_analyzer import ( LogFileImporter, LogAnalyzer )
+from main.connector import SshConnector
 
 
 class LogAnalyzerFactory:

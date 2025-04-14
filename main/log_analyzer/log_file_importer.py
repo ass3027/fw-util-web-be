@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 import pytz
-from scp_connector import ScpConnector
+from main.connector import ScpConnector
 
 
 class LogFileImporter:

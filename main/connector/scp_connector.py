@@ -1,6 +1,6 @@
 import os
 import pexpect
-from main.region import Region, REGION_DICT
+from main import Region, REGION_DICT
 
 
 class ScpConnector:
