@@ -43,18 +43,26 @@ def get_ssh_connector(_region:str):
 def get_region_dict():
     return REGION_DICT
 
-@app.put("/region")
-async def region(_region: str):
-    on_change_region(REGION_DICT[_region])
-
 @app.get('/connection-fail-list')
-async def connection_fail_list():
-    global current_region, db_info_dict
-    log_analyzer = LogAnalyzerFactory.create(current_region,db_info_dict)
+async def connection_fail_list(region_id: str):
+    log_analyzer = LogAnalyzerFactory.create(
+        REGION_DICT[region_id],
+        get_db_info(region_id)
+    )
     return log_analyzer.get_connection_fail_list()
 
 @app.get('/db-info')
 async def db_info(region_id: str):
+    return get_db_info(region_id)
+
+# TODO 이건 ffprobe 특성상 응답이 조금씩 계속 나와서 socket 으로 해야할 듯
+@app.get('/ffprobe')
+async def ffprobe(rtsp_url: str):
+    global _ssh_connector
+    return _ssh_connector.run_ffprobe(rtsp_url)
+
+
+def get_db_info(region_id: str):
     global db_info_dict
     if region_id in db_info_dict.keys():
         return db_info_dict[region_id]
@@ -62,12 +70,6 @@ async def db_info(region_id: str):
     info = get_ssh_connector(region_id).get_db_info()
     db_info_dict[region_id] = info
     return info
-
-# TODO 이건 ffprobe 특성상 응답이 조금씩 계속 나와서 socket 으로 해야할 듯
-@app.get('/ffprobe')
-async def ffprobe(rtsp_url: str):
-    global _ssh_connector
-    return _ssh_connector.run_ffprobe(rtsp_url)
 
 
 if __name__ == '__main__':
