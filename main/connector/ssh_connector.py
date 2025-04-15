@@ -4,6 +4,11 @@ from main import Region, REGION_DICT
 
 
 class SshConnector:
+    COMMAND_PROMPT = '[#$] '
+    TERMINAL_PROMPT = r'(?i)terminal type\?'
+    TERMINAL_TYPE = 'vt100'
+    SSH_NEW_KEY = '(?i)are you sure you want to continue connecting'
+    PASSWORD = '(?i)password'
     def __init__(self, region: Region):
         self.region = region
         self.user = region.user
@@ -13,40 +18,69 @@ class SshConnector:
     def ssh_connect(self):
         child = pexpect.spawn(self.cmd_prefix)
 
-        result = child.expect(pattern=[pexpect.TIMEOUT, "Are you sure you want to continue connecting (yes/no)?"],
-                              timeout=2)
-        if result == 1:
-            child.sendline("yes")
-        else:
-            print("is already registered")
+        result = child.expect(pattern=[pexpect.TIMEOUT, self.SSH_NEW_KEY, self.COMMAND_PROMPT, self.PASSWORD],timeout=2)
 
-        child.expect("'s password: ")
-        child.sendline(self.pw)
-        child.expect(r'\$')
+        if result == 0: # timeout
+            print('ERROR! could not login with SSH. Here is what SSH said:')
+            print(child.before, child.after)
+            print(str(child))
+        elif result == 1: #password login
+            child.sendline("yes")
+            child.expect(self.PASSWORD)
+        elif result == 2: # key login pass
+            pass
+        elif result == 3:
+            child.sendline(self.pw)
+            i = child.expect([self.COMMAND_PROMPT, self.TERMINAL_PROMPT])
+            if i == 1:
+                child.sendline(self.TERMINAL_TYPE)
+                child.expect(self.COMMAND_PROMPT)
 
         return child
 
 
-    def run(self, main_cmd):
+    def run(self, cmd):
         child = self.ssh_connect()
 
         try:
-            child.sendline(main_cmd)
-            # [sudo] password for {username} :
-            if "sudo" in main_cmd:
-                child.expect(f"password for {self.user}: ")
-            child.sendline(self.pw)
+            child.sendline(cmd)
+            self.send_passwd_if_sudo(child, cmd)
 
-            # after result printing, return to console
-            child.expect(f'{self.user}@', 10)
-            output = child.before.decode("utf-8")
-        except Exception as e :
-            print(main_cmd)
+            child.expect(f'{self.user}@', timeout=10)
+            output = child.before.decode()
+        except Exception as e:
+            print(cmd)
             raise e
         finally:
             child.close()
 
         return self.remove_escape_char(output)
+
+    def run_loop_process(self,cmd):
+        child = self.ssh_connect()
+        try:
+            child.sendline(cmd)
+            self.send_passwd_if_sudo(child, cmd)
+
+            while True:
+                result = child.expect([pexpect.TIMEOUT,f'{sc.user}@'], timeout=3)
+                output = child.before.decode()
+
+                yield self.remove_escape_char(output)
+
+                if result == 1: # timeout
+                    break
+        except Exception as e:
+            print(cmd)
+            raise e
+        finally:
+            child.close()
+
+    def send_passwd_if_sudo(self, child, cmd):
+        # [sudo] password for {username} :
+        if "sudo" in cmd:
+            child.expect(f"password for {self.user}: ")
+            child.sendline(self.pw)
 
 
     @staticmethod
