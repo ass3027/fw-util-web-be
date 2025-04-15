@@ -11,7 +11,8 @@ class Region:
         self.ip = ip
         self.port = port
 
-region_json_path = os.path.abspath('../region.json')
+file_path = os.path.dirname(__file__)
+region_json_path = os.path.normpath(os.path.join(file_path, '../region.json'))
 region_list = [
     Region(**region)
     for region in json.load(open(region_json_path, 'r', encoding='utf-8'))
