@@ -1,4 +1,5 @@
 import unittest
+import time
 
 import pexpect
 
@@ -10,6 +11,7 @@ class MyTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         region = REGION_DICT['daegu']
+        cls.region = region
         cls.ssh_connector = SshConnector(region)
 
     def test_init(self):
@@ -58,6 +60,31 @@ class MyTestCase(unittest.TestCase):
                 break
 
         self.assertTrue(len(result) > 0)
+
+    async def run_realtime_view(self):
+        child = self.open_ssh_tunneling()
+
+    def test_open_ssh_tunneling(self):
+        ssh_tunnel = self.open_ssh_tunneling(10115)
+        success_msg = ssh_tunnel.before.decode()
+        print(success_msg)
+        self.assertTrue(len(success_msg) > 0)
+        ssh_tunnel.close()
+
+    def open_ssh_tunneling(self, port):
+        tunnel_cmd = f'ssh -L {port}:localhost:{port} -p {self.region.port} {self.region.user}@{self.region.ip}'
+        ssh_tunnel = pexpect.spawn(tunnel_cmd % globals())
+        try:
+            ssh_tunnel.expect('password:')
+            time.sleep(0.1)
+            ssh_tunnel.sendline(self.region.pw)
+            # time.sleep(60)  # Cygwin is slow to update process status.
+            ssh_tunnel.expect(pexpect.EOF, timeout=5)
+        except Exception as e:
+            print(str(e))
+            raise
+
+        return ssh_tunnel
 
 if __name__ == '__main__':
     unittest.main()
