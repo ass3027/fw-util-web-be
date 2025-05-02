@@ -1,40 +1,50 @@
+import asyncio
 import json
 import pexpect
 from main import Region, REGION_DICT
 
 
 class SshConnector:
+
     COMMAND_PROMPT = '[#$] '
     TERMINAL_PROMPT = r'(?i)terminal type\?'
     TERMINAL_TYPE = 'vt100'
     SSH_NEW_KEY = '(?i)are you sure you want to continue connecting'
     PASSWORD = '(?i)password'
+
     def __init__(self, region: Region):
         self.region = region
         self.user = region.user
         self.pw = region.pw
-        self.cmd_prefix = f"ssh -p {region.port} {region.user}@{region.ip} "
+        self.login_ssh_cmd = f"ssh -p {region.port} {region.user}@{region.ip} "
 
     def ssh_connect(self):
-        child = pexpect.spawn(self.cmd_prefix)
+        child = pexpect.spawn(self.login_ssh_cmd)
 
-        result = child.expect(pattern=[pexpect.TIMEOUT, self.SSH_NEW_KEY, self.COMMAND_PROMPT, self.PASSWORD],timeout=2)
+        try:
+            result = child.expect(pattern=[pexpect.TIMEOUT, self.SSH_NEW_KEY, self.COMMAND_PROMPT, self.PASSWORD],
+                                  timeout=2)
 
-        if result == 0: # timeout
-            print('ERROR! could not login with SSH. Here is what SSH said:')
-            print(child.before, child.after)
-            print(str(child))
-        elif result == 1: #password login
-            child.sendline("yes")
-            child.expect(self.PASSWORD)
-        elif result == 2: # key login pass
-            pass
-        elif result == 3:
-            child.sendline(self.pw)
-            i = child.expect([self.COMMAND_PROMPT, self.TERMINAL_PROMPT])
-            if i == 1:
-                child.sendline(self.TERMINAL_TYPE)
-                child.expect(self.COMMAND_PROMPT)
+            if result == 0:  # timeout
+                print('ERROR! could not login with SSH. Here is what SSH said:')
+                print(child.before, child.after)
+                print(str(child))
+            elif result == 1:  # password login
+                child.sendline("yes")
+                child.expect(self.PASSWORD)
+            elif result == 2:  # key login pass
+                pass
+            elif result == 3:
+                child.sendline(self.pw)
+                i = child.expect([self.COMMAND_PROMPT, self.TERMINAL_PROMPT])
+                if i == 1:
+                    child.sendline(self.TERMINAL_TYPE)
+                    child.expect(self.COMMAND_PROMPT)
+        except pexpect.exceptions.EOF:
+            print('ERROR! could not login with SSH.')
+            error_msg = child.before.decode()
+            child.close()
+            raise Exception(error_msg)
 
         return child
 
@@ -56,25 +66,6 @@ class SshConnector:
 
         return self.remove_escape_char(output)
 
-    def run_loop_process(self,cmd):
-        child = self.ssh_connect()
-        try:
-            child.sendline(cmd)
-            self.send_passwd_if_sudo(child, cmd)
-
-            while True:
-                result = child.expect([pexpect.TIMEOUT,f'{sc.user}@'], timeout=3)
-                output = child.before.decode()
-
-                yield self.remove_escape_char(output)
-
-                if result == 1: # timeout
-                    break
-        except Exception as e:
-            print(cmd)
-            raise e
-        finally:
-            child.close()
 
     def send_passwd_if_sudo(self, child, cmd):
         # [sudo] password for {username} :
@@ -93,6 +84,7 @@ class SshConnector:
             output = output[:-4]
         return output
 
+
     def get_db_info(self):
         docker_exec_cmd = "sudo -S docker exec $(sudo -S docker ps -q --filter publish=27017) "
         mongo_cmd = "mongosh \"firewatcher_v2\" --eval 'db.cctvinfos.find().toArray()' --json"
@@ -107,11 +99,50 @@ class SshConnector:
         return result
 
 
-    def run_ffprobe(self, url):
+    async def run_ffprobe(self, url):
         docker_exec_cmd = "sudo -S docker exec $(sudo -S docker ps -q --filter ancestor=firewatcher:v2.1) "
-        ffprobe_cmd = f"ffprobe {url}"
-        result = self.run(docker_exec_cmd + ffprobe_cmd)
-        return result
+        ffprobe_cmd = f"ffprobe '{url}'"
+        async for output in self.run_loop_process(docker_exec_cmd + ffprobe_cmd):
+            yield output
+
+
+    async def run_loop_process(self, cmd):
+        child = self.ssh_connect()
+        try:
+            child.sendline(cmd)
+            self.send_passwd_if_sudo(child, cmd)
+
+            while True:
+                is_finished, output = self.read_output(child)
+                yield output
+
+                if is_finished:
+                    break
+
+                await asyncio.sleep(2)
+        except Exception as e:
+            print(cmd)
+            raise e
+        finally:
+            print("loop process is finished")
+            child.close()
+
+
+    def read_output(self, child):
+        expect_result = child.expect([pexpect.TIMEOUT, f'{self.user}@'], timeout=0.1)
+        output = child.before.decode()
+        output = self.remove_escape_char(output)
+        print("read output")
+        is_finished = expect_result == 1
+
+        return is_finished, output
+
+
+    async def run_realtime_view(self):
+        child = self.open_ssh_tunneling()
+
+    def open_ssh_tunneling(self):
+        pass
 
     def get_milestone(self):
         docker_exec_cmd = "sudo -S docker logs $(sudo -S docker ps -q --filter ancestor=monowine_mipsdk_v1)"
