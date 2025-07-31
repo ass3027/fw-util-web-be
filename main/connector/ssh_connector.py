@@ -87,7 +87,7 @@ class SshConnector:
 
     def get_db_info(self):
         docker_exec_cmd = "sudo -S docker exec $(sudo -S docker ps -q --filter publish=27017) "
-        mongo_cmd = "mongosh \"firewatcher_v2\" --eval 'db.cctvinfos.find().toArray()' --json"
+        mongo_cmd = "mongosh firewatcher_v2 --json --eval 'db.cctvinfos.find().toArray()'"
         result = self.run(docker_exec_cmd + mongo_cmd)
         db_info = json.loads(result)
 

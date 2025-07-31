@@ -51,12 +51,12 @@ class MyTestCase(unittest.TestCase):
 
         result = []
         while True:
-            result = child.expect([pexpect.TIMEOUT,f'{sc.user}@'], timeout=3)
+            expect_result = child.expect([pexpect.TIMEOUT,f'{sc.user}@'], timeout=3)
             output = child.before.decode()
             print(output)
             result.append(output)
 
-            if result == 1:
+            if expect_result == 1:
                 break
 
         self.assertTrue(len(result) > 0)
